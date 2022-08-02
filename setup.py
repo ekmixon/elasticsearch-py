@@ -27,7 +27,8 @@ base_dir = abspath(dirname(__file__))
 with open(join(base_dir, package_name, "_version.py")) as f:
     package_version = re.search(
         r"__versionstr__\s+=\s+[\"\']([^\"\']+)[\"\']", f.read()
-    ).group(1)
+    )[1]
+
 
 with open(join(base_dir, "README.rst")) as f:
     # Remove reST raw directive from README as they're not allowed on PyPI
@@ -48,8 +49,9 @@ with open(join(base_dir, "README.rst")) as f:
 packages = [
     package
     for package in find_packages(where=".", exclude=("test_elasticsearch*",))
-    if package == package_name or package.startswith(package_name + ".")
+    if package == package_name or package.startswith(f"{package_name}.")
 ]
+
 
 install_requires = [
     "urllib3>=1.21.1, <2",

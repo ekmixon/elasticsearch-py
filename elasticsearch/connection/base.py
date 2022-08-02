@@ -101,13 +101,11 @@ class Connection(object):
             except (ValueError, IndexError):
                 raise ImproperlyConfigured("'cloud_id' is not properly formatted")
 
-            host = "%s.%s" % (es_uuid, parent_dn)
+            host = f"{es_uuid}.{parent_dn}"
             use_ssl = True
             if http_compress is None:
                 http_compress = True
 
-        # If cloud_id isn't set and port is default then use 9200.
-        # Cloud should use '443' by default via the 'https' scheme.
         elif port is None:
             port = 9200
 
@@ -125,9 +123,9 @@ class Connection(object):
         if os.getenv("ELASTIC_CLIENT_APIVERSIONING") == "1":
             self.headers.setdefault(
                 "accept",
-                "application/vnd.elasticsearch+json;compatible-with=%s"
-                % (str(__version__[0]),),
+                f"application/vnd.elasticsearch+json;compatible-with={str(__version__[0])}",
             )
+
 
         self.headers.setdefault("content-type", "application/json")
         self.headers.setdefault("user-agent", self._get_default_user_agent())
@@ -148,12 +146,9 @@ class Connection(object):
         self.scheme = scheme
         self.hostname = host
         self.port = port
-        if ":" in host:  # IPv6
-            self.host = "%s://[%s]" % (scheme, host)
-        else:
-            self.host = "%s://%s" % (scheme, host)
+        self.host = f"{scheme}://[{host}]" if ":" in host else f"{scheme}://{host}"
         if self.port is not None:
-            self.host += ":%s" % self.port
+            self.host += f":{self.port}"
         if url_prefix:
             url_prefix = "/" + url_prefix.strip("/")
         self.url_prefix = url_prefix
@@ -164,11 +159,11 @@ class Connection(object):
         self.meta_header = meta_header
 
     def __repr__(self):
-        return "<%s: %s>" % (self.__class__.__name__, self.host)
+        return f"<{self.__class__.__name__}: {self.host}>"
 
     def __eq__(self, other):
         if not isinstance(other, Connection):
-            raise TypeError("Unsupported equality check for %s and %s" % (self, other))
+            raise TypeError(f"Unsupported equality check for {self} and {other}")
         return self.__hash__() == other.__hash__()
 
     def __hash__(self):
@@ -192,12 +187,7 @@ class Connection(object):
         # Format is: '(number) Elasticsearch-(version)-(instance) "(message)"'
         warning_messages = []
         for header in warning_headers:
-            # Because 'Requests' does it's own folding of multiple HTTP headers
-            # into one header delimited by commas (totally standard compliant, just
-            # annoying for cases like this) we need to expect there may be
-            # more than one message per 'Warning' header.
-            matches = _WARNING_RE.findall(header)
-            if matches:
+            if matches := _WARNING_RE.findall(header):
                 warning_messages.extend(matches)
             else:
                 # Don't want to throw away any warnings, even if they
@@ -222,7 +212,7 @@ class Connection(object):
             return
 
         # include pretty in trace curls
-        path = path.replace("?", "?pretty&", 1) if "?" in path else path + "?pretty"
+        path = path.replace("?", "?pretty&", 1) if "?" in path else f"{path}?pretty"
         if self.url_prefix:
             path = path.replace(self.url_prefix, "", 1)
         tracer.info(
@@ -332,7 +322,7 @@ class Connection(object):
         )
 
     def _get_default_user_agent(self):
-        return "elasticsearch-py/%s (Python %s)" % (__versionstr__, python_version())
+        return f"elasticsearch-py/{__versionstr__} (Python {python_version()})"
 
     def _get_api_key_header_val(self, api_key):
         """
@@ -343,4 +333,4 @@ class Connection(object):
         if isinstance(api_key, (tuple, list)):
             s = "{0}:{1}".format(api_key[0], api_key[1]).encode("utf-8")
             return "ApiKey " + binascii.b2a_base64(s).rstrip(b"\r\n").decode("utf-8")
-        return "ApiKey " + api_key
+        return f"ApiKey {api_key}"

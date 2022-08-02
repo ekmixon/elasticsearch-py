@@ -374,8 +374,13 @@ class TestScan(ElasticsearchTestCase):
     def test_order_can_be_preserved(self):
         bulk = []
         for x in range(100):
-            bulk.append({"index": {"_index": "test_index", "_id": x}})
-            bulk.append({"answer": x, "correct": x == 42})
+            bulk.extend(
+                (
+                    {"index": {"_index": "test_index", "_id": x}},
+                    {"answer": x, "correct": x == 42},
+                )
+            )
+
         self.client.bulk(bulk, refresh=True)
 
         docs = list(
@@ -388,27 +393,31 @@ class TestScan(ElasticsearchTestCase):
         )
 
         self.assertEqual(100, len(docs))
-        self.assertEqual(list(map(str, range(100))), list(d["_id"] for d in docs))
-        self.assertEqual(list(range(100)), list(d["_source"]["answer"] for d in docs))
+        self.assertEqual(list(map(str, range(100))), [d["_id"] for d in docs])
+        self.assertEqual(list(range(100)), [d["_source"]["answer"] for d in docs])
 
     def test_all_documents_are_read(self):
         bulk = []
         for x in range(100):
-            bulk.append({"index": {"_index": "test_index", "_id": x}})
-            bulk.append({"answer": x, "correct": x == 42})
+            bulk.extend(
+                (
+                    {"index": {"_index": "test_index", "_id": x}},
+                    {"answer": x, "correct": x == 42},
+                )
+            )
+
         self.client.bulk(bulk, refresh=True)
 
         docs = list(helpers.scan(self.client, index="test_index", size=2))
 
         self.assertEqual(100, len(docs))
-        self.assertEqual(set(map(str, range(100))), set(d["_id"] for d in docs))
-        self.assertEqual(set(range(100)), set(d["_source"]["answer"] for d in docs))
+        self.assertEqual(set(map(str, range(100))), {d["_id"] for d in docs})
+        self.assertEqual(set(range(100)), {d["_source"]["answer"] for d in docs})
 
     def test_scroll_error(self):
         bulk = []
         for x in range(4):
-            bulk.append({"index": {"_index": "test_index"}})
-            bulk.append({"value": x})
+            bulk.extend(({"index": {"_index": "test_index"}}, {"value": x}))
         self.client.bulk(bulk, refresh=True)
 
         with patch.object(self.client, "scroll") as scroll_mock:
@@ -541,8 +550,7 @@ class TestScan(ElasticsearchTestCase):
     def test_logger(self, logger_mock):
         bulk = []
         for x in range(4):
-            bulk.append({"index": {"_index": "test_index"}})
-            bulk.append({"value": x})
+            bulk.extend(({"index": {"_index": "test_index"}}, {"value": x}))
         self.client.bulk(bulk, refresh=True)
 
         with patch.object(self.client, "scroll") as scroll_mock:
@@ -576,8 +584,7 @@ class TestScan(ElasticsearchTestCase):
     def test_clear_scroll(self):
         bulk = []
         for x in range(4):
-            bulk.append({"index": {"_index": "test_index"}})
-            bulk.append({"value": x})
+            bulk.extend(({"index": {"_index": "test_index"}}, {"value": x}))
         self.client.bulk(bulk, refresh=True)
 
         with patch.object(
@@ -632,14 +639,17 @@ class TestReindex(ElasticsearchTestCase):
     def setup_method(self, _):
         bulk = []
         for x in range(100):
-            bulk.append({"index": {"_index": "test_index", "_id": x}})
-            bulk.append(
-                {
-                    "answer": x,
-                    "correct": x == 42,
-                    "type": "answers" if x % 2 == 0 else "questions",
-                }
+            bulk.extend(
+                (
+                    {"index": {"_index": "test_index", "_id": x}},
+                    {
+                        "answer": x,
+                        "correct": x == 42,
+                        "type": "answers" if x % 2 == 0 else "questions",
+                    },
+                )
             )
+
         self.client.bulk(bulk, refresh=True)
 
     def test_reindex_passes_kwargs_to_scan_and_bulk(self):
@@ -765,15 +775,18 @@ def reindex_data_stream_setup(sync_client):
     dt = datetime.now(tz=tz.UTC)
     bulk = []
     for x in range(100):
-        bulk.append({"index": {"_index": "test_index_stream", "_id": x}})
-        bulk.append(
-            {
-                "answer": x,
-                "correct": x == 42,
-                "type": "answers" if x % 2 == 0 else "questions",
-                "@timestamp": (dt - timedelta(days=x)).isoformat(),
-            }
+        bulk.extend(
+            (
+                {"index": {"_index": "test_index_stream", "_id": x}},
+                {
+                    "answer": x,
+                    "correct": x == 42,
+                    "type": "answers" if x % 2 == 0 else "questions",
+                    "@timestamp": (dt - timedelta(days=x)).isoformat(),
+                },
+            )
         )
+
     sync_client.bulk(bulk, refresh=True)
     sync_client.indices.put_index_template(
         name="my-index-template",

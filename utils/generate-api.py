@@ -258,7 +258,7 @@ class API:
     @property
     def path(self):
         return max(
-            (path for path in self._def["url"]["paths"]),
+            self._def["url"]["paths"],
             key=lambda p: len(re.findall(r"\{([^}]+)\}", p["path"])),
         )
 
@@ -403,7 +403,9 @@ def dump_modules(modules):
 
     filepaths = []
     for root, _, filenames in os.walk(CODE_ROOT / "elasticsearch/_async"):
-        for filename in filenames:
+        filepaths.extend(
+            os.path.join(root, filename)
+            for filename in filenames
             if (
                 filename.rpartition(".")[-1]
                 in (
@@ -411,8 +413,8 @@ def dump_modules(modules):
                     "pyi",
                 )
                 and not filename.startswith("utils.py")
-            ):
-                filepaths.append(os.path.join(root, filename))
+            )
+        )
 
     unasync.unasync_files(filepaths, rules)
     blacken(CODE_ROOT / "elasticsearch")

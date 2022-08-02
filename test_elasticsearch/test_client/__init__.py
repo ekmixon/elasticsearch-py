@@ -113,7 +113,7 @@ class TestClient(ElasticsearchTestCase):
         self.assertIn("es.org", repr(Elasticsearch(["es.org:123"])))
 
     def test_repr_truncates_host_to_5(self):
-        hosts = [{"host": "es" + str(i)} for i in range(10)]
+        hosts = [{"host": f"es{str(i)}"} for i in range(10)]
         es = Elasticsearch(hosts)
         self.assertNotIn("es5", repr(es))
         self.assertIn("...", repr(es))

@@ -78,7 +78,7 @@ def wipe_cluster_settings(client):
         if value:
             new_settings.setdefault(name, {})
             for key in value.keys():
-                new_settings[name][key + ".*"] = None
+                new_settings[name][f"{key}.*"] = None
     if new_settings:
         client.cluster.put_settings(body=new_settings)
 
@@ -113,7 +113,7 @@ def wipe_snapshots(client):
 
         client.snapshot.delete_repository(repository=repo_name, ignore=404)
 
-    assert in_progress_snapshots == []
+    assert not in_progress_snapshots
 
 
 def wipe_data_streams(client):
@@ -132,11 +132,10 @@ def wipe_indices(client):
 
 
 def wipe_searchable_snapshot_indices(client):
-    cluster_metadata = client.cluster.state(
+    if cluster_metadata := client.cluster.state(
         metric="metadata",
         filter_path="metadata.indices.*.settings.index.store.snapshot",
-    )
-    if cluster_metadata:
+    ):
         for index in cluster_metadata["metadata"]["indices"].keys():
             client.indices.delete(index=index)
 
@@ -151,7 +150,7 @@ def wipe_xpack_templates(client):
         try:
             client.indices.delete_template(name=template)
         except NotFoundError as e:
-            if "index_template [%s] missing" % template in str(e.info):
+            if f"index_template [{template}] missing" in str(e.info):
                 client.indices.delete_index_template(name=template)
 
     # Delete component templates, need to retry because sometimes
@@ -222,7 +221,7 @@ def wait_for_pending_tasks(client, filter, timeout=30):
     end_time = time.time() + timeout
     while time.time() < end_time:
         tasks = client.cat.tasks(detailed=True).split("\n")
-        if not any(filter in task for task in tasks):
+        if all(filter not in task for task in tasks):
             break
 
 
@@ -257,7 +256,7 @@ def is_xpack_template(name):
         return True
     if ".transform-" in name:
         return True
-    if name in {
+    return name in {
         ".watches",
         "logstash-index-template",
         ".logstash-management",
@@ -278,6 +277,4 @@ def is_xpack_template(name):
         "synthetics-mappings",
         ".snapshot-blob-cache",
         "data-streams-mappings",
-    }:
-        return True
-    return False
+    }

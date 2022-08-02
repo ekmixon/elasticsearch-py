@@ -72,7 +72,7 @@ class TestParallelBulk(TestCase):
                 Elasticsearch(), actions, thread_count=10, chunk_size=2
             )
         )
-        self.assertTrue(len(set([r[1] for r in results])) > 1)
+        self.assertTrue(len({r[1] for r in results}) > 1)
 
 
 class TestChunkActions(TestCase):

@@ -433,8 +433,13 @@ class TestScan(object):
     async def test_order_can_be_preserved(self, async_client, scan_teardown):
         bulk = []
         for x in range(100):
-            bulk.append({"index": {"_index": "test_index", "_id": x}})
-            bulk.append({"answer": x, "correct": x == 42})
+            bulk.extend(
+                (
+                    {"index": {"_index": "test_index", "_id": x}},
+                    {"answer": x, "correct": x == 42},
+                )
+            )
+
         await async_client.bulk(bulk, refresh=True)
 
         docs = [
@@ -448,14 +453,19 @@ class TestScan(object):
         ]
 
         assert 100 == len(docs)
-        assert list(map(str, range(100))) == list(d["_id"] for d in docs)
-        assert list(range(100)) == list(d["_source"]["answer"] for d in docs)
+        assert list(map(str, range(100))) == [d["_id"] for d in docs]
+        assert list(range(100)) == [d["_source"]["answer"] for d in docs]
 
     async def test_all_documents_are_read(self, async_client, scan_teardown):
         bulk = []
         for x in range(100):
-            bulk.append({"index": {"_index": "test_index", "_id": x}})
-            bulk.append({"answer": x, "correct": x == 42})
+            bulk.extend(
+                (
+                    {"index": {"_index": "test_index", "_id": x}},
+                    {"answer": x, "correct": x == 42},
+                )
+            )
+
         await async_client.bulk(bulk, refresh=True)
 
         docs = [
@@ -464,14 +474,13 @@ class TestScan(object):
         ]
 
         assert 100 == len(docs)
-        assert set(map(str, range(100))) == set(d["_id"] for d in docs)
-        assert set(range(100)) == set(d["_source"]["answer"] for d in docs)
+        assert set(map(str, range(100))) == {d["_id"] for d in docs}
+        assert set(range(100)) == {d["_source"]["answer"] for d in docs}
 
     async def test_scroll_error(self, async_client, scan_teardown):
         bulk = []
         for x in range(4):
-            bulk.append({"index": {"_index": "test_index"}})
-            bulk.append({"value": x})
+            bulk.extend(({"index": {"_index": "test_index"}}, {"value": x}))
         await async_client.bulk(bulk, refresh=True)
 
         with patch.object(async_client, "scroll", MockScroll()):
@@ -566,7 +575,7 @@ class TestScan(object):
                         )
                     ]
 
-                    assert data == []
+                    assert not data
                     scroll_mock.assert_not_called()
                     clear_mock.assert_not_called()
 
@@ -574,8 +583,7 @@ class TestScan(object):
     async def test_logger(self, logger_mock, async_client, scan_teardown):
         bulk = []
         for x in range(4):
-            bulk.append({"index": {"_index": "test_index"}})
-            bulk.append({"value": x})
+            bulk.extend(({"index": {"_index": "test_index"}}, {"value": x}))
         await async_client.bulk(bulk, refresh=True)
 
         with patch.object(async_client, "scroll", MockScroll()):
@@ -615,8 +623,7 @@ class TestScan(object):
     async def test_clear_scroll(self, async_client, scan_teardown):
         bulk = []
         for x in range(4):
-            bulk.append({"index": {"_index": "test_index"}})
-            bulk.append({"value": x})
+            bulk.extend(({"index": {"_index": "test_index"}}, {"value": x}))
         await async_client.bulk(bulk, refresh=True)
 
         with patch.object(
@@ -752,14 +759,17 @@ class TestScan(object):
 async def reindex_setup(async_client):
     bulk = []
     for x in range(100):
-        bulk.append({"index": {"_index": "test_index", "_id": x}})
-        bulk.append(
-            {
-                "answer": x,
-                "correct": x == 42,
-                "type": "answers" if x % 2 == 0 else "questions",
-            }
+        bulk.extend(
+            (
+                {"index": {"_index": "test_index", "_id": x}},
+                {
+                    "answer": x,
+                    "correct": x == 42,
+                    "type": "answers" if x % 2 == 0 else "questions",
+                },
+            )
         )
+
     await async_client.bulk(bulk, refresh=True)
     yield
 
@@ -892,15 +902,18 @@ async def reindex_data_stream_setup(async_client):
     dt = datetime.now(tz=timezone.utc)
     bulk = []
     for x in range(100):
-        bulk.append({"index": {"_index": "test_index_stream", "_id": x}})
-        bulk.append(
-            {
-                "answer": x,
-                "correct": x == 42,
-                "type": "answers" if x % 2 == 0 else "questions",
-                "@timestamp": (dt - timedelta(days=x)).isoformat(),
-            }
+        bulk.extend(
+            (
+                {"index": {"_index": "test_index_stream", "_id": x}},
+                {
+                    "answer": x,
+                    "correct": x == 42,
+                    "type": "answers" if x % 2 == 0 else "questions",
+                    "@timestamp": (dt - timedelta(days=x)).isoformat(),
+                },
+            )
         )
+
     await async_client.bulk(bulk, refresh=True)
     await async_client.indices.put_index_template(
         name="my-index-template",

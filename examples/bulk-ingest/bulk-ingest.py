@@ -32,13 +32,10 @@ def download_dataset():
             raise RuntimeError("Could not download dataset")
 
         with open(DATASET_PATH, mode="wb") as f:
-            chunk = resp.read(CHUNK_SIZE)
-            while chunk:
+            while chunk := resp.read(CHUNK_SIZE):
                 f.write(chunk)
-                chunk = resp.read(CHUNK_SIZE)
-
     with open(DATASET_PATH) as f:
-        return sum([1 for _ in f]) - 1
+        return sum(1 for _ in f) - 1
 
 
 def create_index(client):

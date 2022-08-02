@@ -489,16 +489,16 @@ class TestTransport:
         t = AsyncTransport([{}], connection_class=DummyConnection)
         await t._async_call()
 
-        assert not any([conn.closed for conn in t.connection_pool.connections])
+        assert not any(conn.closed for conn in t.connection_pool.connections)
         await t.close()
-        assert all([conn.closed for conn in t.connection_pool.connections])
+        assert all(conn.closed for conn in t.connection_pool.connections)
 
         t = AsyncTransport([{}, {}], connection_class=DummyConnection)
         await t._async_call()
 
-        assert not any([conn.closed for conn in t.connection_pool.connections])
+        assert not any(conn.closed for conn in t.connection_pool.connections)
         await t.close()
-        assert all([conn.closed for conn in t.connection_pool.connections])
+        assert all(conn.closed for conn in t.connection_pool.connections)
 
     async def test_sniff_on_start_no_viable_hosts(self, event_loop):
         t = AsyncTransport(

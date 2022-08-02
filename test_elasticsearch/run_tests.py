@@ -38,9 +38,10 @@ def fetch_es_repo():
     # no repo
     if not exists(repo_path) or not exists(join(repo_path, ".git")):
         subprocess.check_call(
-            "git clone https://github.com/elastic/elasticsearch %s" % repo_path,
+            f"git clone https://github.com/elastic/elasticsearch {repo_path}",
             shell=True,
         )
+
 
     # set YAML test dir
     environ["TEST_ES_YAML_DIR"] = join(
@@ -65,12 +66,13 @@ def fetch_es_repo():
     # fetch new commits to be sure...
     print("Fetching elasticsearch repo...")
     subprocess.check_call(
-        "cd %s && git fetch https://github.com/elastic/elasticsearch.git" % repo_path,
+        f"cd {repo_path} && git fetch https://github.com/elastic/elasticsearch.git",
         shell=True,
     )
+
     # reset to the version fron info()
-    subprocess.check_call("cd %s && git fetch" % repo_path, shell=True)
-    subprocess.check_call("cd %s && git reset --hard %s" % (repo_path, sha), shell=True)
+    subprocess.check_call(f"cd {repo_path} && git fetch", shell=True)
+    subprocess.check_call(f"cd {repo_path} && git reset --hard {sha}", shell=True)
 
 
 def run_all(argv=None):
@@ -88,11 +90,12 @@ def run_all(argv=None):
         argv = [
             "pytest",
             "--cov=elasticsearch",
-            "--junitxml=%s" % junit_xml,
+            f"--junitxml={junit_xml}",
             "--log-level=DEBUG",
             "--cache-clear",
             "-vv",
         ]
+
 
         ignores = []
         # Python 3.6+ is required for async
@@ -108,7 +111,7 @@ def run_all(argv=None):
                 ]
             )
         if ignores:
-            argv.extend(["--ignore=%s" % ignore for ignore in ignores])
+            argv.extend([f"--ignore={ignore}" for ignore in ignores])
 
         # Jenkins, only run server tests
         if environ.get("TEST_TYPE") == "server":

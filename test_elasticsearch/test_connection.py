@@ -345,7 +345,7 @@ class TestUrllib3Connection(TestCase):
         con = Urllib3HttpConnection()
         self.assertEqual(
             con._get_default_user_agent(),
-            "elasticsearch-py/%s (Python %s)" % (__versionstr__, python_version()),
+            f"elasticsearch-py/{__versionstr__} (Python {python_version()})",
         )
 
     def test_timeout_set(self):

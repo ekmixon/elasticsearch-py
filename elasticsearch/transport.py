@@ -48,9 +48,7 @@ def get_host_info(node_info, host):
     :arg host: connection information (host, port) extracted from the node info
     """
     # ignore master only nodes
-    if node_info.get("roles", []) == ["master"]:
-        return None
-    return host
+    return None if node_info.get("roles", []) == ["master"] else host
 
 
 class Transport(object):
@@ -194,9 +192,7 @@ class Transport(object):
             ("t", _client_meta_version(__versionstr__)),
         )
 
-        # Grab the 'HTTP_CLIENT_META' property from the connection class
-        http_client_meta = getattr(connection_class, "HTTP_CLIENT_META", None)
-        if http_client_meta:
+        if http_client_meta := getattr(connection_class, "HTTP_CLIENT_META", None):
             self._client_meta += (http_client_meta,)
 
     def add_connection(self, host):
@@ -247,9 +243,11 @@ class Transport(object):
         Retrieve a :class:`~elasticsearch.Connection` instance from the
         :class:`~elasticsearch.ConnectionPool` instance.
         """
-        if self.sniffer_timeout:
-            if time.time() >= self.last_sniff + self.sniffer_timeout:
-                self.sniff_hosts()
+        if (
+            self.sniffer_timeout
+            and time.time() >= self.last_sniff + self.sniffer_timeout
+        ):
+            self.sniff_hosts()
         return self.connection_pool.get_connection()
 
     def _get_sniff_data(self, initial=False):
@@ -277,8 +275,9 @@ class Transport(object):
                     _, headers, node_info = c.perform_request(
                         "GET",
                         "/_nodes/_all/http",
-                        timeout=self.sniff_timeout if not initial else None,
+                        timeout=None if initial else self.sniff_timeout,
                     )
+
 
                     # Lowercase all the header names for consistency in accessing them.
                     headers = {
@@ -313,11 +312,9 @@ class Transport(object):
             fqdn, ipaddress = address.split("/", 1)
             host["host"] = fqdn
             _, host["port"] = ipaddress.rsplit(":", 1)
-            host["port"] = int(host["port"])
-
         else:
             host["host"], host["port"] = address.rsplit(":", 1)
-            host["port"] = int(host["port"])
+        host["port"] = int(host["port"])
 
         return self.host_info_callback(host_info, host)
 
@@ -333,16 +330,14 @@ class Transport(object):
         """
         node_info = self._get_sniff_data(initial)
 
-        hosts = list(filter(None, (self._get_host_info(n) for n in node_info)))
-
-        # we weren't able to get any nodes or host_info_callback blocked all -
-        # raise error.
-        if not hosts:
+        if hosts := list(
+            filter(None, (self._get_host_info(n) for n in node_info))
+        ):
+            self.set_connections(hosts)
+        else:
             raise TransportError(
                 "N/A", "Unable to sniff hosts - no viable hosts found."
             )
-
-        self.set_connections(hosts)
 
     def mark_dead(self, connection):
         """
@@ -407,25 +402,24 @@ class Transport(object):
                 retry = False
                 if isinstance(e, ConnectionTimeout):
                     retry = self.retry_on_timeout
-                elif isinstance(e, ConnectionError):
+                elif (
+                    isinstance(e, ConnectionError)
+                    or e.status_code in self.retry_on_status
+                ):
                     retry = True
-                elif e.status_code in self.retry_on_status:
-                    retry = True
-
-                if retry:
-                    try:
-                        # only mark as dead if we are retrying
-                        self.mark_dead(connection)
-                    except TransportError:
-                        # If sniffing on failure, it could fail too. Catch the
-                        # exception not to interrupt the retries.
-                        pass
-                    # raise exception on last retry
-                    if attempt == self.max_retries:
-                        raise e
-                else:
+                if not retry:
                     raise e
 
+                try:
+                    # only mark as dead if we are retrying
+                    self.mark_dead(connection)
+                except TransportError:
+                    # If sniffing on failure, it could fail too. Catch the
+                    # exception not to interrupt the retries.
+                    pass
+                # raise exception on last retry
+                if attempt == self.max_retries:
+                    raise e
             else:
                 # connection didn't fail, confirm it's live status
                 self.connection_pool.mark_live(connection)
@@ -491,8 +485,6 @@ class Transport(object):
         if self.meta_header:
             headers = headers or {}
             client_meta = self._client_meta + client_meta
-            headers["x-elastic-client-meta"] = ",".join(
-                "%s=%s" % (k, v) for k, v in client_meta
-            )
+            headers["x-elastic-client-meta"] = ",".join(f"{k}={v}" for k, v in client_meta)
 
         return method, headers, params, body, ignore, timeout
