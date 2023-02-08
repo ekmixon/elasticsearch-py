@@ -25,3 +25,4 @@ twine
 aiohttp; python_version>="3.6"
 pytest-asyncio; python_version>="3.6"
 unasync; python_version>="3.6"
+setuptools>=65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
