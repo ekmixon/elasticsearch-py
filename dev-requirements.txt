@@ -3,7 +3,7 @@ pytest
 pytest-cov
 coverage
 mock
-sphinx<1.7
+sphinx<3.3.0
 sphinx_rtd_theme
 jinja2
 python-dateutil
