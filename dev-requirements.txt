@@ -1,4 +1,4 @@
-requests>=2, <3
+requests>=2.32.0, <3
 pytest
 pytest-cov
 coverage
