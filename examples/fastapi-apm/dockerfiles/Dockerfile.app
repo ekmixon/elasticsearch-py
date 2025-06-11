@@ -1,4 +1,4 @@
-FROM python:3.8
+FROM python:3.12.11
 
 EXPOSE 9292
 WORKDIR /
